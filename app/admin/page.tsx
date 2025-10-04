@@ -3,11 +3,15 @@
 import { useState, useEffect } from "react"
 import AdminPanel from "@/components/admin-panel"
 import AdminLogin from "@/components/admin-login"
-import { toast } from "sonner";
 
 const ADMIN_CREDENTIALS = {
   email: "admin@medicalplatform.com",
   password: "admin123456",
+}
+
+interface LoginResult {
+  success: boolean
+  error?: string
 }
 
 export default function AdminPage() {
@@ -20,7 +24,6 @@ export default function AdminPage() {
     if (adminSession) {
       try {
         const session = JSON.parse(adminSession)
-        // Check if session is still valid (24 hours)
         const sessionTime = new Date(session.timestamp)
         const now = new Date()
         const hoursDiff = (now.getTime() - sessionTime.getTime()) / (1000 * 60 * 60)
@@ -32,20 +35,23 @@ export default function AdminPage() {
         }
       } catch (error) {
         localStorage.removeItem("adminSession")
-        console.log(error)
+        console.error(error)
       }
     }
     setInitialLoading(false)
   }, [])
 
-  const handleLogin = async (credentials: { email: string; password: string }) => {
+  const handleLogin = async (
+    credentials: { email: string; password: string }
+  ): Promise<LoginResult> => {
     setLoading(true)
 
-    // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    if (credentials.email === ADMIN_CREDENTIALS.email && credentials.password === ADMIN_CREDENTIALS.password) {
-      // Store admin session
+    if (
+      credentials.email === ADMIN_CREDENTIALS.email &&
+      credentials.password === ADMIN_CREDENTIALS.password
+    ) {
       const session = {
         email: credentials.email,
         timestamp: new Date().toISOString(),
@@ -53,13 +59,13 @@ export default function AdminPage() {
       localStorage.setItem("adminSession", JSON.stringify(session))
 
       setIsAuthenticated(true)
-      toast.success("Welcome to the admin dashboard!")
-    } else {
-      // ✅ Sonner error toast
-      toast.error("Invalid email or password. Please try again.")
-    }
 
-    setLoading(false)
+      setLoading(false)
+      return { success: true }
+    } else {
+      setLoading(false)
+      return { success: false, error: "Invalid email or password" }
+    }
   }
 
   if (initialLoading) {

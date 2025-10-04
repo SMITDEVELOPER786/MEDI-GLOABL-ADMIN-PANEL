@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,8 +9,15 @@ import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, Shield, Lock } from "lucide-react"
 import { toast } from "sonner"
 
+interface LoginResult {
+  success: boolean
+  error?: string
+}
+
 interface AdminLoginProps {
-  onLogin: (credentials: { email: string; password: string }) => void
+  onLogin: (
+    credentials: { email: string; password: string }
+  ) => Promise<LoginResult> | Promise<void> | void
   loading?: boolean
 }
 
@@ -19,17 +25,42 @@ export default function AdminLogin({ onLogin, loading = false }: AdminLoginProps
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
 
     if (!email || !password) {
-      toast.error("Please enter both email and password.")
-
+      setError("Please enter both email and password.")
+      toast.error("⚠️ Please enter both email and password.", {
+        description: "Fields cannot be left empty",
+      })
       return
     }
 
-    onLogin({ email, password })
+    try {
+      const result = (await onLogin({ email, password })) as LoginResult | void
+
+      if (result && result.success) {
+        toast.success("✅ Login successful", {
+          description: "Redirecting to admin dashboard...",
+          className: "bg-green-50 border border-green-200 text-green-700 shadow-md",
+        })
+      } else if (result && result.error) {
+        setError(result.error)
+        toast.error("❌ Invalid credentials", {
+          description: result.error,
+          className: "bg-red-50 border border-red-200 text-red-700 shadow-md",
+        })
+      }
+    } catch (err) {
+      setError("Login failed. Please try again.")
+      toast.error("🚨 Login failed", {
+        description: err instanceof Error ? err.message : "Unexpected error occurred.",
+        className: "bg-red-50 border border-red-200 text-red-700 shadow-md",
+      })
+    }
   }
 
   return (
@@ -99,6 +130,11 @@ export default function AdminLogin({ onLogin, loading = false }: AdminLoginProps
                 </div>
               </div>
 
+              {/* Inline error message */}
+              {error && (
+                <p className="text-sm text-red-600 font-medium -mt-3">{error}</p>
+              )}
+
               <Button
                 type="submit"
                 className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
@@ -117,7 +153,9 @@ export default function AdminLogin({ onLogin, loading = false }: AdminLoginProps
 
             <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="text-center">
-                <p className="text-xs text-gray-500">Authorized personnel only. All access is monitored and logged.</p>
+                <p className="text-xs text-gray-500">
+                  Authorized personnel only. All access is monitored and logged.
+                </p>
               </div>
             </div>
           </CardContent>
